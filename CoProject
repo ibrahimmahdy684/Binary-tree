@@ -1,0 +1,265 @@
+.data
+# Input arrays
+breadthfirst_array: .word 4, 9, 10, 10, 15, 2, 3
+depthfirst_array: .word 4, 9, 10, 15, 10, 2, 3
+
+# Output arrays
+output_bftodf: .space 28  # Space for 7 elements * 4 bytes each
+output_dftobf: .space 28  # Space for 7 elements * 4 bytes each
+
+# Target value
+target: .word 10
+
+# Newline for printing
+newline: .asciiz "\n"
+
+.text
+.globl main
+
+main:
+    # Initialize stack pointer
+    addi $sp, $sp, -16
+    sw $ra, 12($sp)
+    sw $s0, 8($sp)
+    sw $s1, 4($sp)
+    sw $s2, 0($sp)
+
+    # Part 1: Breadth First Search on Breadth First Array
+    la $s0, breadthfirst_array
+    lw $s1, target
+    jal breadthSearchOnBreadthArray
+
+    # Print BFS result
+    move $a0, $v0
+    li $v0, 1
+    syscall
+    la $a0, newline
+    li $v0, 4
+    syscall
+
+    # Part 2: Convert BF Array to DF Array
+    la $s0, breadthfirst_array
+    la $s1, output_bftodf
+    li $s2, 0  # Start index
+    li $t0, 7  # Array size
+    li $t1, 0  # Output index
+    jal convertBFtoDFArray
+
+    # Print converted DF Array
+    la $s0, output_bftodf
+    li $t2, 0
+    li $t3, 7
+print_bftodf:
+    bge $t2, $t3, done_bftodf
+    lw $a0, 0($s0)
+    li $v0, 1
+    syscall
+    li $a0, ' '
+    li $v0, 11
+    syscall
+    addi $s0, $s0, 4
+    addi $t2, $t2, 1
+    j print_bftodf
+done_bftodf:
+    la $a0, newline
+    li $v0, 4
+    syscall
+
+    # Part 3: Depth First Search on Depth First Array
+    la $s0, depthfirst_array
+    lw $s1, target
+    jal depthSearchOnDepthArray
+
+    # Print DFS result
+    move $a0, $v0
+    li $v0, 1
+    syscall
+    la $a0, newline
+    li $v0, 4
+    syscall
+
+    # Part 4: Convert DF Array to BF Array
+    la $s0, depthfirst_array
+    la $s1, output_dftobf
+    li $s2, 0  # Start index
+    li $t0, 7  # Array size
+    li $t1, 0  # Output index
+    jal convertDFtoBFArray
+
+    # Print converted BF Array
+    la $s0, output_dftobf
+    li $t2, 0
+    li $t3, 7
+print_dftobf:
+    bge $t2, $t3, done_dftobf
+    lw $a0, 0($s0)
+    li $v0, 1
+    syscall
+    li $a0, ' '
+    li $v0, 11
+    syscall
+    addi $s0, $s0, 4
+    addi $t2, $t2, 1
+    j print_dftobf
+done_dftobf:
+    la $a0, newline
+    li $v0, 4
+    syscall
+
+    # Restore registers and exit
+    lw $ra, 12($sp)
+    lw $s0, 8($sp)
+    lw $s1, 4($sp)
+    lw $s2, 0($sp)
+    addi $sp, $sp, 16
+    li $v0, 10
+    syscall
+
+# Procedures
+
+#procedure 3
+breadthSearchOnBreadthArray:
+    # $s0: address of input array
+    # $s1: target
+    # $t0: i
+    # $t1: input array length
+    # $t2: j
+    # $t3: cnt
+
+    li $t0, 0            
+search:
+    li $t1, 7           
+    bge $t0, $t1, targetnotfound
+    sll $t4, $t0, 2     
+    add $t4, $t4, $s0    
+    lw $t5, 0($t4)      
+    beq $t5, $s1, targetfound
+    addi $t0, $t0, 1    
+    j search
+    
+targetnotfound:
+    li $v0, -1          
+    jr $ra
+    
+targetfound:
+    li $t2, 1         
+    li $t3, 1            
+level:
+    sllv $t6, $t2, $t3   
+    ble $t6, $t0, inccnt
+    j endcount
+    
+inccnt:
+    addi $t3, $t3, 1     
+    j level
+    
+endcount:
+    move $v0, $t3       
+    addi $v0, $v0, -1    
+    jr $ra               
+    
+    
+#procedure 1
+convertBFtoDFArray:
+    addi $sp, $sp, -16
+    sw $ra, 12($sp)
+    sw $s0, 8($sp)
+    sw $s1, 4($sp)
+    sw $s2, 0($sp)
+    bge $s2, $t0, return
+    sll $t3, $s2, 2
+    add $t8, $t3, $s0
+    lw $t9, 0($t8)
+    sll $t6, $t1, 2
+    add $t7, $t6, $s1
+    sw $t9, 0($t7)
+    addi $t1, $t1, 1
+    sll $s2, $s2, 1
+    addi $s2, $s2, 1
+    jal convertBFtoDFArray
+    lw $s2, 0($sp)
+    sll $s2, $s2, 1
+    addi $s2, $s2, 2
+    jal convertBFtoDFArray
+
+return:
+    lw $s2, 0($sp)
+    lw $s1, 4($sp)
+    lw $s0, 8($sp)
+    lw $ra, 12($sp)
+    addi $sp, $sp, 16
+    jr $ra
+#procedure 4
+depthSearchOnDepthArray:
+#$t0:i
+#$t1:input array length 
+#$t2:depthlevel
+#$t3:nodes in currentlevel
+#$t4:nodes visited
+    li $t0, 0            
+    li $t2, 0            
+    li $t3, 1            
+    li $t4, 0            
+
+searchDepth:
+    li $t1, 7            
+    bge $t0, $t1, depthnotfound
+    sll $t6, $t0, 2      
+    add $t6, $t6, $s0    
+    lw $t5, 0($t6)       
+    beq $t5, $s1, targetfoundDepth
+    addi $t4, $t4, 1     
+    beq $t4, $t3, nextLevel 
+    addi $t0, $t0, 1     
+    j searchDepth
+    
+nextLevel:
+    li $t4, 0            
+    sll $t3, $t3, 1      
+    addi $t2, $t2, 1     
+    j searchDepth
+    
+depthnotfound:
+    li $v0, -1           
+    jr $ra
+    
+targetfoundDepth:
+    move $v0, $t2       
+    jr $ra               
+
+#peocedure 2
+convertDFtoBFArray:
+# $s0: input array address
+    # $s1: output array address
+    # $s2: input index
+    # $t0: input array size
+    # $t1: output index
+
+    addi $sp, $sp, -16
+    sw $ra, 12($sp)
+    sw $s0, 8($sp)
+    sw $s1, 4($sp)
+    sw $s2, 0($sp)
+    bge $s2, $t0, return2
+    sll $t3,$t1,2
+    add $t8,$t3,$s0
+    lw $t9,0($t8)
+    sll $t6,$s2,2
+    add $t7,$t6,$s1
+    sw $t9,0($t7)
+    addi $t1, $t1, 1
+    sll $s2, $s2, 1
+    addi $s2, $s2, 1
+    jal convertDFtoBFArray
+    lw $s2, 0($sp)
+    sll $s2, $s2, 1
+    addi $s2, $s2, 2
+    jal convertDFtoBFArray
+
+return2:
+    lw $s2, 0($sp)
+    lw $s1, 4($sp)
+    lw $s0, 8($sp)
+    lw $ra, 12($sp)
+    addi $sp, $sp, 16
+    jr $ra
